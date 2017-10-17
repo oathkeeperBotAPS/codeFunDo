@@ -159,6 +159,7 @@ def verifyToken():
 @app.route('/', methods=['POST'])
 def messageRecieved():
 	payload = request.get_data()
+	payload = json.loads(payload)
 	#with open('messageLog.txt', 'a') as log:
 		#log.write(payload['entry'])
 		#log.write('------------------------------------------------')
