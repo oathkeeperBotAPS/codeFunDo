@@ -123,8 +123,9 @@ def sendReply(sender, reply):
 
 	r = requests.post(sendUrl, headers= headers, data=data, params=params)
 	if r.status_code != requests.codes.ok:
-		with open('errorLog.txt') as errorLog:
-			errorLog.write(r.text)
+		print("eroor")
+		#with open('errorLog.txt') as errorLog:
+			#errorLog.write(r.text)
 
 
 
@@ -158,9 +159,9 @@ def verifyToken():
 @app.route('/', methods=['POST'])
 def messageRecieved():
 	payload = request.get_data()
-	with open('messageLog.txt', 'a') as log:
-		log.write(payload['entry'])
-		log.write('------------------------------------------------')
+	#with open('messageLog.txt', 'a') as log:
+		#log.write(payload['entry'])
+		#log.write('------------------------------------------------')
 	for sender, reply in analyseData(payload['entry']):
 		sendReply(sender, reply)
 	return 'ok'
