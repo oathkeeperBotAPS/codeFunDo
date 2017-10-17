@@ -19,83 +19,83 @@ subscription_key = '3fc2ab51520e473f8842f288fe2ec87a'
 
 
 def NoneIntent(entities):
-  rep = "Hi, I am Creo"
-  return rep
+	rep = "Hi, I am Creo"
+	return rep
 
 
 
 
 
 def convoIntent(entities):
-  for entity in entities:
-    if entity['type'] == 'hayhello':
-      try:
-        rep = convoRep[entity['entity']]
-      except:
-        rep = "Hi, I am Creo"
+	for entity in entities:
+		if entity['type'] == 'hayhello':
+			try:
+				rep = convoRep[entity['entity']]
+			except:
+				rep = "Hi, I am Creo"
 
-  return rep
+	return rep
 
 
 
 def getReply(jsonData):
-  query = jsonData['query']
-  topScoringIntent = jsonData['topScoringIntent']['intent']
-  entities = jsonData['entities']
+	query = jsonData['query']
+	topScoringIntent = jsonData['topScoringIntent']['intent']
+	entities = jsonData['entities']
 
-  return processIntent[topScoringIntent](entities)
+	return processIntent[topScoringIntent](entities)
 
 
 
 
 
 def getResponse(query):
-  headers = {
-     'Ocp-Apim-Subscription-Key': subscription_key,
-  }
+	headers = {
+ 	   'Ocp-Apim-Subscription-Key': subscription_key,
+	}
 
-  params ={
-      'q': query,
-      'timezoneOffset': '0',
-      'verbose': 'false',
-      'spellCheck': 'false',
-      'staging': 'false',
-  }
+	params ={
+	    'q': query,
+	    'timezoneOffset': '0',
+	    'verbose': 'false',
+	    'spellCheck': 'false',
+	    'staging': 'false',
+	}
 
-  try:
-      r = requests.get(baseUrl + app_id,headers=headers, params=params)
-      try:
-        json_data = r.json()
-        res = getReply(json_data)
-        return res
-      except Exception as e:
-        print("Error")
+	try:
+	    r = requests.get(baseUrl + app_id,headers=headers, params=params)
+	    try:
+	    	json_data = r.json()
+	    	res = getReply(json_data)
+	    	return res
+	    except Exception as e:
+	    	print("Error")
 
-  except Exception as e:
-      print("Error in request")
+	except Exception as e:
+	    print("Error in request")
 
 
 
 
 def analyseMsg(msg):
-  msgId = msg['mid']
-  try:
-    query = msg['text']
-    return getResponse(query)
-  except:
-    return "Hey, I am Creo"
+	msgId = msg['mid']
+	try:
+		query = msg['text']
+		return getResponse(query)
+	except:
+		return "Hey, I am Creo"
 
 
 
 
 def analyseData(entries):
-  for entry in entries:
-    pageId = entry['id']
-    for msg in entry['messaging']:
-      sender = msg['sender']['id']
-      reply = analyseMsg(msg['message'])
-      reply = reply.encode('unicode_escape')
-      yield sender, reply
+	for entry in entries:
+		pageId = entry['id']
+		for msg in entry['messaging']:
+			sender = msg['sender']['id']
+			reply = analyseMsg(msg['message'])
+			reply = reply.encode('unicode_escape')
+			yield sender, reply
 
 
 
@@ -103,42 +103,42 @@ def analyseData(entries):
 
 
 def sendReply(sender, reply):
-  headers = {
-    'Content-type' : 'application/json'
-  }
+	headers = {
+		'Content-type' : 'application/json'
+	}
 
-  params = {
-    'access_token' : TOKEN
-  }
+	params = {
+		'access_token' : TOKEN
+	}
 
-  data = json.dumps({
-    'recipient' : {
-      'id' : sender
-    },
+	data = json.dumps({
+		'recipient' : {
+			'id' : sender
+		},
 
-    'message' : {
-      'text' : reply.decode('unicode_escape')
-    }
-  })
+		'message' : {
+			'text' : reply.decode('unicode_escape')
+		}
+	})
 
-  r = requests.post(sendUrl, headers= headers, data=data, params=params)
-  if r.status_code != requests.codes.ok:
-    with open('errorLog.txt') as errorLog:
-      errorLog.write(r.text)
+	r = requests.post(sendUrl, headers= headers, data=data, params=params)
+	if r.status_code != requests.codes.ok:
+		with open('errorLog.txt') as errorLog:
+			errorLog.write(r.text)
 
 
 
 processIntent = {
-  'convo' : convoIntent,
-  'None' : NoneIntent,
+	'convo' : convoIntent,
+	'None' : NoneIntent,
 }
 
 
 convoRep = {
-  'hey' : "Hey, How's your day?",
-  'hello' : "Hello, there. How was your day?",
-  'hi' : "Hii, How did your day go?",
-  'whatsup' : "All Good, How you doing?",
+	'hey' : "Hey, How's your day?",
+	'hello' : "Hello, there. How was your day?",
+	'hi' : "Hii, How did your day go?",
+	'whatsup' : "All Good, How you doing?",
 }
 
 
@@ -146,26 +146,26 @@ convoRep = {
 
 @app.route('/', methods=['GET'])
 def verifyToken():
-  token = request.args.get('hub.verify_token')
-  if token == TOKEN:
-    print("Verification Successful.")
-    return request.args.get('hub.challenge')
-  else:
-    print('Verification Failed')
-    return "Verification Failed."
+	token = request.args.get('hub.verify_token')
+	if token == TOKEN:
+		print("Verification Successful.")
+		return request.args.get('hub.challenge')
+	else:
+		print('Verification Failed')
+		return "Verification Failed."
 
 
 @app.route('/', methods=['POST'])
 def messageRecieved():
-  payload = request.get_data()
-  with open('messageLog.txt', 'a') as log:
-    log.write(payload['entry'])
-    log.write('------------------------------------------------')
-  for sender, reply in analyseData(payload['entry']):
-    sendReply(sender, reply)
-  return 'ok'
+	payload = request.get_data()
+	with open('messageLog.txt', 'a') as log:
+		log.write(payload['entry'])
+		log.write('------------------------------------------------')
+	for sender, reply in analyseData(payload['entry']):
+		sendReply(sender, reply)
+	return 'ok'
 
 
 
 if __name__=='__main__':
-  app.run()
+	app.run()
