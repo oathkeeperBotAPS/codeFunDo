@@ -1,7 +1,7 @@
 import sys
 from flask import request, Flask
 import requests
-import json
+import jsonData
 
 
 
@@ -70,10 +70,10 @@ def getResponse(query):
 	    	res = getReply(json_data)
 	    	return res
 	    except Exception as e:
-	    	print("Error")
+	    	return "Error in luis data"
 
 	except Exception as e:
-	    print("Error in request")
+	    return "Error in request"
 
 
 
