@@ -1,59 +1,171 @@
-from flask import Flask, request
-import json
+import sys
+from flask import request, Flask
 import requests
+
+
+
 
 app = Flask(__name__)
 
-# This needs to be filled with the Page Access Token that will be provided
-# by the Facebook App that will be created.
-PAT = 'EAAG938KqkPoBAPHnGjuv3bQhgdAbALWfDAPHy1h8kX1sgdNPYjtzS4SAUOpZASXfDMRCS3ycdFzEMuIPLWtdy6NBFDrHKOrjEp40Dsa7gbhu80g4SANhOHBNDEVSsOZBL4WQSAbLqVboZAlBykv25671Yo1WacJG3U0UHh6FQZDZD'
+TOKEN = 'EAAG938KqkPoBAPHnGjuv3bQhgdAbALWfDAPHy1h8kX1sgdNPYjtzS4SAUOpZASXfDMRCS3ycdFzEMuIPLWtdy6NBFDrHKOrjEp40Dsa7gbhu80g4SANhOHBNDEVSsOZBL4WQSAbLqVboZAlBykv25671Yo1WacJG3U0UHh6FQZDZD'
+baseUrl = 'https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/'
+sendUrl = 'https://graph.facebook.com/v2.6/me/messages'
+app_id = '94d57e7b-86f8-44d3-9b63-9f6f8a0610b3'
+subscription_key = '3fc2ab51520e473f8842f288fe2ec87a'
+
+
+
+
+
+
+def NoneIntent(entities):
+  rep = "Hi, I am Creo"
+  return rep
+
+
+
+
+
+def convoIntent(entities):
+  for entity in entities:
+    if entity['type'] == 'hayhello':
+      try:
+        rep = convoRep[entity['entity']]
+      except:
+        rep = "Hi, I am Creo"
+
+  return rep
+
+
+
+def getReply(jsonData):
+  query = jsonData['query']
+  topScoringIntent = jsonData['topScoringIntent']['intent']
+  entities = jsonData['entities']
+
+  return processIntent[topScoringIntent](entities)
+
+
+
+
+
+def getResponse(query):
+  headers = {
+     'Ocp-Apim-Subscription-Key': subscription_key,
+  }
+
+  params ={
+      'q': query,
+      'timezoneOffset': '0',
+      'verbose': 'false',
+      'spellCheck': 'false',
+      'staging': 'false',
+  }
+
+  try:
+      r = requests.get(baseUrl + app_id,headers=headers, params=params)
+      try:
+        json_data = r.json()
+        res = getReply(json_data)
+        return res
+      except Exception as e:
+        print("Error")
+
+  except Exception as e:
+      print("Error in request")
+
+
+
+
+def analyseMsg(msg):
+  msgId = msg['mid']
+  try:
+    query = msg['text']
+    return getResponse(query)
+  except:
+    return "Hey, I am Creo"
+
+
+
+
+def analyseData(entries):
+  for entry in entries:
+    pageId = entry['id']
+    for msg in entry['messaging']:
+      sender = msg['sender']['id']
+      reply = analyseMsg(msg['message'])
+      reply = reply.encode('unicode_escape')
+      yield sender, reply
+
+
+
+
+
+
+def sendReply(sender, reply):
+  headers = {
+    'Content-type' : 'application/json'
+  }
+
+  params = {
+    'access_token' : TOKEN
+  }
+
+  data = json.dumps({
+    'recipient' : {
+      'id' : sender
+    },
+
+    'message' : {
+      'text' : reply.decode('unicode_escape')
+    }
+  })
+
+  r = requests.post(sendUrl, headers= headers, data=data, params=params)
+  if r.status_code != requests.codes.ok:
+    with open('errorLog.txt') as errorLog:
+      errorLog.write(r.text)
+
+
+
+processIntent = {
+  'convo' : convoIntent,
+  'None' : NoneIntent,
+}
+
+
+convoRep = {
+  'hey' : "Hey, How's your day?",
+  'hello' : "Hello, there. How was your day?",
+  'hi' : "Hii, How did your day go?",
+  'whatsup' : "All Good, How you doing?",
+}
+
+
+
 
 @app.route('/', methods=['GET'])
-def handle_verification():
-  print("Handling Verification.")
-  if request.args.get('hub.verify_token', '') == 'my_voice_is_my_password_verify_me':
-    print("Verification successful!")
-    return request.args.get('hub.challenge', '')
+def verifyToken():
+  token = request.args.get('hub.verify_token')
+  if token == TOKEN:
+    print("Verification Successful.")
+    return request.args.get('hub.challenge')
   else:
-    print("Verification failed!")
-    return 'Error, wrong validation token'
+    print('Verification Failed')
+    return "Verification Failed."
+
 
 @app.route('/', methods=['POST'])
-def handle_messages():
-  print("Handling Messages")
+def messageRecieved():
   payload = request.get_data()
-  print(payload)
-  for sender, message in messaging_events(payload):
-    print("Incoming from %s: %s" % (sender, message))
-    send_message(PAT, sender, message)
-  return "ok"
-
-def messaging_events(payload):
-  """Generate tuples of (sender_id, message_text) from the
-  provided payload.
-  """
-  data = json.loads(payload)
-  messaging_events = data["entry"][0]["messaging"]
-  for event in messaging_events:
-    if "message" in event and "text" in event["message"]:
-      yield event["sender"]["id"], event["message"]["text"].encode('unicode_escape')
-    else:
-      yield event["sender"]["id"], ("I can't echo this").encode('unicode_escape')
+  with open('messageLog.txt', 'a') as log:
+    log.write(payload['entry'])
+    log.write('------------------------------------------------')
+  for sender, reply in analyseData(payload['entry']):
+    sendReply(sender, reply)
+  return 'ok'
 
 
-def send_message(token, recipient, text):
-  """Send the message text to recipient with id recipient.
-  """
 
-  r = requests.post("https://graph.facebook.com/v2.6/me/messages",
-    params={"access_token": token},
-    data=json.dumps({
-      "recipient": {"id": recipient},
-      "message": {"text": text.decode('unicode_escape')}
-    }),
-    headers={'Content-type': 'application/json'})
-  if r.status_code != requests.codes.ok:
-    print(r.text)
-
-if __name__ == '__main__':
+if __name__=='__main__':
   app.run()
