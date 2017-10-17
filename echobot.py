@@ -155,7 +155,7 @@ def verifyToken():
 		return "Verification Failed."
 
 
-@app.route('/', methods=['POST']):
+@app.route('/', methods=['POST'])
 def messageRecieved():
 	payload = request.get_data()
 	with open('messageLog.txt', 'a') as log:
